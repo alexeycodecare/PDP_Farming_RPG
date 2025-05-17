@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,6 +12,7 @@ public class SceneControllerManager : SingletonMonobehaviour<SceneControllerMana
     [SerializeField] private CanvasGroup faderCanvasGroup = null;
     [SerializeField] private Image faderImage = null;
     public SceneName startingSceneName;
+    [SerializeField] private List<SceneName> listNonStartingSceneNames = new List<SceneName>();
 
 
     private IEnumerator Fade(float finalAlpha)
@@ -98,6 +100,22 @@ public class SceneControllerManager : SingletonMonobehaviour<SceneControllerMana
         // Set the initial alpha to start off with a black screen.
         faderImage.color = new Color(0f, 0f, 0f, 1f);
         faderCanvasGroup.alpha = 1f;
+
+        // Pre-load all non-starting scenes to ensure all starting crops in other scenes are saved to the grid properties
+        foreach (SceneName sceneName in listNonStartingSceneNames)
+        {
+            // Start the scene loading and wait for it to finish.
+            yield return StartCoroutine (LoadSceneAndSetActive(sceneName.ToString()));
+
+            // If this event has any subscribers, call it.
+            EventHandler.CallAfterSceneLoadEvent();
+
+            SaveLoadManager.Instance.RestoreCurrentSceneData();
+
+            SaveLoadManager.Instance.StoreCurrentSceneData();
+
+            yield return SceneManager.UnloadSceneAsync(sceneName.ToString());
+        }
 
         // Start the first scene loading and wait for it to finish.
         yield return StartCoroutine(LoadSceneAndSetActive(startingSceneName.ToString()));
